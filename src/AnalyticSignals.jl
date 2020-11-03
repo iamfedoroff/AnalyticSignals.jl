@@ -3,6 +3,8 @@ module AnalyticSignals
 import CUDA
 import FFTW
 
+export rspec2aspec!, aspec2rspec!, rsig2asig!, asig2rsig!, rsig2aspec!
+
 
 """
 Transforms the spectrum of a real signal to the spectrum of the corresponding
@@ -20,6 +22,15 @@ function rspec2aspec!(S::AbstractArray{Complex{T}, 1}) where T
     end
     for i=Nhalf+1:N
         S[i] = 0   # f < 0
+    end
+    return nothing
+end
+
+
+function rspec2aspec!(S::AbstractArray{Complex{T}, 2}) where T
+    N1, N2 = size(S)
+    for i=1:N1
+        @views rspec2aspec!(S[i, :])
     end
     return nothing
 end
