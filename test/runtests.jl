@@ -147,16 +147,16 @@ asig2rsig!(E2)
 # 2D GPU
 # ******************************************************************************
 # real signal -> analytic signal:
-# E2gpu = copy(Er2gpu)
-# plan = FFTW.plan_fft(E2gpu, [2])
-# rsig2asig!(E2gpu, plan)
-# @test isapprox(E2gpu, Ea2gpu, rtol=1e-6)
+E2gpu = copy(Er2gpu)
+plan = FFTW.plan_fft!(E2gpu, [2])
+rsig2asig!(E2gpu, plan)
+@test isapprox(collect(E2gpu), Ea2, rtol=1e-6)
 
 # real signal -> analytic spectrum:
-# E2gpu = copy(Er2gpu)
-# plan = FFTW.plan_fft(E2gpu, [2])
-# rsig2aspec!(E2gpu, plan)
-# @test isapprox(E2, Sa2, rtol=1e-6)
+E2gpu = copy(Er2gpu)
+plan = FFTW.plan_fft!(E2gpu, [2])
+rsig2aspec!(E2gpu, plan)
+@test isapprox(collect(E2gpu), Sa2, rtol=1e-6)
 
 # real spectrum -> analytic spectrum:
 S2gpu = copy(Sr2)
@@ -168,10 +168,9 @@ rspec2aspec!(S2gpu)
 
 # ------------------------------------------------------------------------------
 # analytic signal -> real signal
-# !!! does not work in VSCode !!!
-# E2gpu = copy(Ea2gpu)
-# asig2rsig!(E2gpu)
-# @test isapprox(collect(E2gpu), Er2, rtol=1e-6)
+E2gpu = copy(Ea2gpu)
+asig2rsig!(E2gpu)
+@test isapprox(collect(E2gpu), Er2, rtol=1e-6)
 
 # analytic signal -> real spectrum
 # nothing
@@ -181,10 +180,9 @@ rspec2aspec!(S2gpu)
 # aspec2rspec!(S2)
 # @test isapprox(collect(S2), Sr2, rtol=1e-6)
 
-# !!! does not work in VSCode !!!
-# S2gpu = CUDA.zeros(ComplexF64, (Nr, Nw))
-# aspec2rspec!(S2gpu, Sa2gpu)
-# @test isapprox(collect(S2gpu), Sr2[1:end, 1:Nw], rtol=1e-6)
+S2gpu = CUDA.zeros(ComplexF64, (Nr, Nw))
+aspec2rspec!(S2gpu, Sa2gpu)
+@test isapprox(collect(S2gpu), Sr2[1:end, 1:Nw], rtol=1e-6)
 
 # analytic spectrum -> real signal
 # nothing

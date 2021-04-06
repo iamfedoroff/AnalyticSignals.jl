@@ -16,9 +16,9 @@ function rsig2asig!(
     E::AbstractArray{Complex{T}},
     FT::FFTW.Plan,
 ) where T
-    FFTW.ldiv!(E, FT, E)   # time -> frequency [exp(-i*w*t)]
+    FT \ E   # time -> frequency [exp(-i*w*t)]
     rspec2aspec!(E)
-    FFTW.mul!(E, FT, E)   # frequency -> time [exp(-i*w*t)]
+    FT * E   # frequency -> time [exp(-i*w*t)]
     return nothing
 end
 
@@ -33,7 +33,7 @@ function rsig2aspec!(
     E::AbstractArray{Complex{T}},
     FT::FFTW.Plan,
 ) where T
-    FFTW.ldiv!(E, FT, E)   # time -> frequency [exp(-i*w*t)]
+    FT \ E   # time -> frequency [exp(-i*w*t)]
     rspec2aspec!(E)
     return nothing
 end
