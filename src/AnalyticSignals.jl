@@ -6,6 +6,42 @@ import FFTW
 export rspec2aspec!, aspec2rspec!, rsig2asig!, asig2rsig!, rsig2aspec!
 
 
+# ******************************************************************************
+# real signal -> analytic signal
+# ******************************************************************************
+"""
+Transforms a real signal to the corresponding analytic signal.
+"""
+function rsig2asig!(
+    E::AbstractArray{Complex{T}},
+    FT::FFTW.Plan,
+) where T
+    FFTW.ldiv!(E, FT, E)   # time -> frequency [exp(-i*w*t)]
+    rspec2aspec!(E)
+    FFTW.mul!(E, FT, E)   # frequency -> time [exp(-i*w*t)]
+    return nothing
+end
+
+
+# ******************************************************************************
+# real signal -> analytic spectrum
+# ******************************************************************************
+"""
+Transforms a real signal to the spectrum of the corresponding analytic signal.
+"""
+function rsig2aspec!(
+    E::AbstractArray{Complex{T}},
+    FT::FFTW.Plan,
+) where T
+    FFTW.ldiv!(E, FT, E)   # time -> frequency [exp(-i*w*t)]
+    rspec2aspec!(E)
+    return nothing
+end
+
+
+# ******************************************************************************
+# real spectrum -> analytic spectrum
+# ******************************************************************************
 """
 Transforms the spectrum of a real signal to the spectrum of the corresponding
 analytic signal:
@@ -94,6 +130,31 @@ function _rspec2aspec_kernel!(S::CUDA.CuDeviceArray{Complex{T}, 3}) where T
 end
 
 
+# ******************************************************************************
+# real spectrum -> analytic signal
+# ******************************************************************************
+
+
+# ******************************************************************************
+# analytic signal -> real signal
+# ******************************************************************************
+"""
+Transforms an analytic signal to the corresponding real signal.
+"""
+function asig2rsig!(E::AbstractArray{Complex{T}}) where T
+    @. E = real(E)
+    return nothing
+end
+
+
+# ******************************************************************************
+# analytic signal -> real spectrum
+# ******************************************************************************
+
+
+# ******************************************************************************
+# analytic spectrum -> real spectrum
+# ******************************************************************************
 """
 Transforms the spectrum of an analytic signal to the spectrum of the
 corresponding real signal:
@@ -167,42 +228,12 @@ function _aspec2rspec_kernel!(
 end
 
 
-"""
-Transforms a real signal to the corresponding analytic signal.
-"""
-function rsig2asig!(
-    E::AbstractArray{Complex{T}},
-    FT::FFTW.Plan,
-) where T
-    FFTW.ldiv!(E, FT, E)   # time -> frequency [exp(-i*w*t)]
-    rspec2aspec!(E)
-    FFTW.mul!(E, FT, E)   # frequency -> time [exp(-i*w*t)]
-    return nothing
-end
+# ******************************************************************************
+# analytic spectrum -> real signal
+# ******************************************************************************
 
 
-"""
-Transforms an analytic signal to the corresponding real signal.
-"""
-function asig2rsig!(E::AbstractArray{Complex{T}}) where T
-    @. E = real(E)
-    return nothing
-end
-
-
-"""
-Transforms a real signal to the spectrum of the corresponding analytic signal.
-"""
-function rsig2aspec!(
-    E::AbstractArray{Complex{T}},
-    FT::FFTW.Plan,
-) where T
-    FFTW.ldiv!(E, FT, E)   # time -> frequency [exp(-i*w*t)]
-    rspec2aspec!(E)
-    return nothing
-end
-
-
+# ******************************************************************************
 function half(N::Int)
     if iseven(N)
         Nhalf = div(N, 2)
