@@ -116,8 +116,8 @@ end
 
 
 function aspec2rspec!(
-    Sr::AbstractArray{Complex{T}},
-    Sa::AbstractArray{Complex{T}},
+    Sr::AbstractArray{Complex{T}, 1},
+    Sa::AbstractArray{Complex{T}, 1},
 ) where T
     N = length(Sr)
     Sr[1] = Sa[1]   # f = 0
