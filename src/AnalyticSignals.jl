@@ -31,10 +31,7 @@ half(N) = iseven(N) ? div(N, 2) : div(N + 1, 2)
 # ******************************************************************************
 # real signal -> analytic signal
 # ******************************************************************************
-function rsig2asig!(
-    E::AbstractArray{Complex{T}},
-    FT::FFTW.Plan,
-) where T
+function rsig2asig!(E::AbstractArray{<:Complex}, FT::FFTW.Plan)
     FT \ E   # time -> frequency [exp(-i*w*t)]
     rspec2aspec!(E)
     FT * E   # frequency -> time [exp(-i*w*t)]
@@ -45,10 +42,7 @@ end
 # ******************************************************************************
 # real signal -> analytic spectrum
 # ******************************************************************************
-function rsig2aspec!(
-    E::AbstractArray{Complex{T}},
-    FT::FFTW.Plan,
-) where T
+function rsig2aspec!(E::AbstractArray{<:Complex}, FT::FFTW.Plan)
     FT \ E   # time -> frequency [exp(-i*w*t)]
     rspec2aspec!(E)
     return nothing
@@ -62,7 +56,7 @@ end
 # Sa(f) = { Sr(f),      f = 0   = [1 + sgn(f)] * Sr(f)
 #         { 0,          f < 0
 # ******************************************************************************
-function rspec2aspec!(S::AbstractArray{Complex{T}, 1}) where T
+function rspec2aspec!(S::AbstractArray{<:Complex, 1})
     N = length(S)
     Nhalf = half(N)
     # S[1] = S[1]   # f = 0
@@ -76,7 +70,7 @@ function rspec2aspec!(S::AbstractArray{Complex{T}, 1}) where T
 end
 
 
-function rspec2aspec!(S::AbstractArray{Complex{T}, 2}) where T
+function rspec2aspec!(S::AbstractArray{<:Complex, 2})
     N1, N2 = size(S)
     for i=1:N1
         @views rspec2aspec!(S[i, :])
@@ -85,14 +79,13 @@ function rspec2aspec!(S::AbstractArray{Complex{T}, 2}) where T
 end
 
 
-function rspec2aspec!(S::CUDA.CuArray{Complex{T}}) where T
-    N = length(S)
-    @krun N _rspec2aspec_kernel!(S)
+function rspec2aspec!(S::CUDA.CuArray{<:Complex})
+    @krun length(S) _rspec2aspec_kernel!(S)
     return nothing
 end
 
 
-function _rspec2aspec_kernel!(S::CUDA.CuDeviceArray{Complex{T}, 2}) where T
+function _rspec2aspec_kernel!(S::CUDA.CuDeviceArray{<:Complex, 2})
     id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
     stride = CUDA.blockDim().x * CUDA.gridDim().x
     Nr, Nt = size(S)
@@ -113,7 +106,7 @@ function _rspec2aspec_kernel!(S::CUDA.CuDeviceArray{Complex{T}, 2}) where T
 end
 
 
-function _rspec2aspec_kernel!(S::CUDA.CuDeviceArray{Complex{T}, 3}) where T
+function _rspec2aspec_kernel!(S::CUDA.CuDeviceArray{<:Complex, 3})
     id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
     stride = CUDA.blockDim().x * CUDA.gridDim().x
     Nx, Ny, Nt = size(S)
@@ -143,7 +136,7 @@ end
 # ******************************************************************************
 # analytic signal -> real signal
 # ******************************************************************************
-function asig2rsig!(E::AbstractArray{Complex{T}}) where T
+function asig2rsig!(E::AbstractArray{<:Complex})
     @. E = real(E)
     return nothing
 end
@@ -161,7 +154,7 @@ end
 # Sr(f) = { Sa(f),             f = 0   = [Sa(f) + conj(Sa(-f))] / 2
 #         { conj(Sa(-f)) / 2,  f < 0
 # ******************************************************************************
-function aspec2rspec!(S::AbstractArray{Complex{T}, 1}) where T
+function aspec2rspec!(S::AbstractArray{<:Complex, 1})
     N = length(S)
     Nhalf = half(N)
     # S[1] = S[1]   # f = 0
@@ -175,10 +168,7 @@ function aspec2rspec!(S::AbstractArray{Complex{T}, 1}) where T
 end
 
 
-function aspec2rspec!(
-    Sr::AbstractArray{Complex{T}, 1},
-    Sa::AbstractArray{Complex{T}, 1},
-) where T
+function aspec2rspec!(Sr::A, Sa::A) where A<:AbstractArray{<:Complex, 1}
     N = length(Sr)
     Sr[1] = Sa[1]   # f = 0
     for i=2:N
@@ -188,20 +178,15 @@ function aspec2rspec!(
 end
 
 
-function aspec2rspec!(
-    Sr::CUDA.CuArray{Complex{T}},
-    Sa::CUDA.CuArray{Complex{T}},
-) where T
-    N = length(Sr)
-    @krun N _aspec2rspec_kernel!(Sr, Sa)
+function aspec2rspec!(Sr::A, Sa::A) where A<:CUDA.CuArray{<:Complex}
+    @krun length(Sr) _aspec2rspec_kernel!(Sr, Sa)
     return nothing
 end
 
 
 function _aspec2rspec_kernel!(
-    Sr::CUDA.CuDeviceArray{Complex{T}, 2},
-    Sa::CUDA.CuDeviceArray{Complex{T}, 2},
-) where T
+    Sr::A, Sa::A,
+) where A<:CUDA.CuDeviceArray{<:Complex, 2}
     id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
     stride = CUDA.blockDim().x * CUDA.gridDim().x
     Nr, Nw = size(Sr)
