@@ -6,12 +6,31 @@ import FFTW
 export rspec2aspec!, aspec2rspec!, rsig2asig!, asig2rsig!, rsig2aspec!
 
 
+macro krun(ex...)
+    N = ex[1]
+    call = ex[2]
+
+    args = call.args[2:end]
+
+    @gensym kernel config threads blocks
+    code = quote
+        local $kernel = CUDA.@cuda launch=false $call
+        local $config = CUDA.launch_configuration($kernel.fun)
+        local $threads = min($N, $config.threads)
+        local $blocks = cld($N, $threads)
+        $kernel($(args...); threads=$threads, blocks=$blocks)
+    end
+
+    return esc(code)
+end
+
+
+half(N) = iseven(N) ? div(N, 2) : div(N + 1, 2)
+
+
 # ******************************************************************************
 # real signal -> analytic signal
 # ******************************************************************************
-"""
-Transforms a real signal to the corresponding analytic signal.
-"""
 function rsig2asig!(
     E::AbstractArray{Complex{T}},
     FT::FFTW.Plan,
@@ -26,9 +45,6 @@ end
 # ******************************************************************************
 # real signal -> analytic spectrum
 # ******************************************************************************
-"""
-Transforms a real signal to the spectrum of the corresponding analytic signal.
-"""
 function rsig2aspec!(
     E::AbstractArray{Complex{T}},
     FT::FFTW.Plan,
@@ -41,14 +57,11 @@ end
 
 # ******************************************************************************
 # real spectrum -> analytic spectrum
+#
+#         { 2 * Sr(f),  f > 0
+# Sa(f) = { Sr(f),      f = 0   = [1 + sgn(f)] * Sr(f)
+#         { 0,          f < 0
 # ******************************************************************************
-"""
-Transforms the spectrum of a real signal to the spectrum of the corresponding
-analytic signal:
-            { 2 * Sr(f),  f > 0
-    Sa(f) = { Sr(f),      f = 0   = [1 + sgn(f)] * Sr(f)
-            { 0,          f < 0
-"""
 function rspec2aspec!(S::AbstractArray{Complex{T}, 1}) where T
     N = length(S)
     Nhalf = half(N)
@@ -74,15 +87,7 @@ end
 
 function rspec2aspec!(S::CUDA.CuArray{Complex{T}}) where T
     N = length(S)
-
-    function get_config(kernel)
-        fun = kernel.fun
-        config = CUDA.launch_configuration(fun)
-        blocks = cld(N, config.threads)
-        return (threads=config.threads, blocks=blocks)
-    end
-
-    CUDA.@cuda config=get_config _rspec2aspec_kernel!(S)
+    @krun N _rspec2aspec_kernel!(S)
     return nothing
 end
 
@@ -138,9 +143,6 @@ end
 # ******************************************************************************
 # analytic signal -> real signal
 # ******************************************************************************
-"""
-Transforms an analytic signal to the corresponding real signal.
-"""
 function asig2rsig!(E::AbstractArray{Complex{T}}) where T
     @. E = real(E)
     return nothing
@@ -154,14 +156,11 @@ end
 
 # ******************************************************************************
 # analytic spectrum -> real spectrum
+#
+#         { Sa(f) / 2,         f > 0
+# Sr(f) = { Sa(f),             f = 0   = [Sa(f) + conj(Sa(-f))] / 2
+#         { conj(Sa(-f)) / 2,  f < 0
 # ******************************************************************************
-"""
-Transforms the spectrum of an analytic signal to the spectrum of the
-corresponding real signal:
-            { Sa(f) / 2,         f > 0
-    Sr(f) = { Sa(f),             f = 0   = [Sa(f) + conj(Sa(-f))] / 2
-            { conj(Sa(-f)) / 2,  f < 0
-"""
 function aspec2rspec!(S::AbstractArray{Complex{T}, 1}) where T
     N = length(S)
     Nhalf = half(N)
@@ -194,15 +193,7 @@ function aspec2rspec!(
     Sa::CUDA.CuArray{Complex{T}},
 ) where T
     N = length(Sr)
-
-    function get_config(kernel)
-        fun = kernel.fun
-        config = CUDA.launch_configuration(fun)
-        blocks = cld(N, config.threads)
-        return (threads=config.threads, blocks=blocks)
-    end
-
-    CUDA.@cuda config=get_config _aspec2rspec_kernel!(Sr, Sa)
+    @krun N _aspec2rspec_kernel!(Sr, Sa)
     return nothing
 end
 
@@ -231,17 +222,6 @@ end
 # ******************************************************************************
 # analytic spectrum -> real signal
 # ******************************************************************************
-
-
-# ******************************************************************************
-function half(N::Int)
-    if iseven(N)
-        Nhalf = div(N, 2)
-    else
-        Nhalf = div(N + 1, 2)
-    end
-    return Nhalf
-end
 
 
 end
