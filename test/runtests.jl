@@ -60,19 +60,25 @@ plan = FFTW.plan_fft!(E)
 rsig2asig!(E, plan)
 @test isapprox(E, Ea, rtol=1e-6)
 
+
 # real signal -> analytic spectrum:
 E = copy(Er)
 plan = FFTW.plan_fft!(E)
 rsig2aspec!(E, plan)
 @test isapprox(E, Sa, rtol=1e-6)
 
+
 # real spectrum -> analytic spectrum:
 S = copy(Sr)
 rspec2aspec!(S)
 @test isapprox(S, Sa, rtol=1e-6)
 
+
 # real spectrum -> analytic signal:
-# nothing
+S = copy(Sr)
+plan = FFTW.plan_fft!(S)
+rspec2asig!(S, plan)
+@test isapprox(S, Ea, rtol=1e-6)
 
 
 # ------------------------------------------------------------------------------
@@ -81,8 +87,19 @@ E = copy(Ea)
 asig2rsig!(E)
 @test isapprox(E, Er, rtol=1e-6)
 
+
 # analytic signal -> real spectrum
-# nothing
+E = copy(Ea)
+plan = FFTW.plan_fft!(E)
+asig2rspec!(E, plan)
+@test isapprox(E, Sr, rtol=1e-6)
+
+S = zeros(ComplexF64, Nw)
+E = copy(Ea)
+plan = FFTW.plan_fft!(E)
+asig2rspec!(S, E, plan)
+@test isapprox(S, Sr[1:Nw], rtol=1e-6)
+
 
 # analytic spectrum -> real spectrum
 S = copy(Sa)
@@ -93,8 +110,12 @@ S = zeros(ComplexF64, Nw)
 aspec2rspec!(S, Sa)
 @test isapprox(S, Sr[1:Nw], rtol=1e-6)
 
+
 # analytic spectrum -> real signal
-# nothing
+S = copy(Sa)
+plan = FFTW.plan_fft!(S)
+aspec2rsig!(S, plan)
+@test isapprox(S, Er, rtol=1e-6)
 
 
 # ******************************************************************************
@@ -106,19 +127,25 @@ plan = FFTW.plan_fft!(E2, [2])
 rsig2asig!(E2, plan)
 @test isapprox(E2, Ea2, rtol=1e-6)
 
+
 # real signal -> analytic spectrum:
 E2 = copy(Er2)
 plan = FFTW.plan_fft!(E2, [2])
 rsig2aspec!(E2, plan)
 @test isapprox(E2, Sa2, rtol=1e-6)
 
+
 # real spectrum -> analytic spectrum:
 S2 = copy(Sr2)
 rspec2aspec!(S2)
 @test isapprox(S2, Sa2, rtol=1e-6)
 
+
 # real spectrum -> analytic signal:
-# nothing
+S2 = copy(Sr2)
+plan = FFTW.plan_fft!(S2, [2])
+rspec2asig!(S2, plan)
+@test isapprox(S2, Ea2, rtol=1e-6)
 
 
 # ------------------------------------------------------------------------------
@@ -127,20 +154,35 @@ E2 = copy(Ea2)
 asig2rsig!(E2)
 @test isapprox(E2, Er2, rtol=1e-6)
 
+
 # analytic signal -> real spectrum
-# nothing
+E2 = copy(Ea2)
+plan = FFTW.plan_fft!(E2, [2])
+asig2rspec!(E2, plan)
+@test isapprox(E2, Sr2, rtol=1e-6)
+
+S2 = zeros(ComplexF64, (Nr, Nw))
+E2 = copy(Ea2)
+plan = FFTW.plan_fft!(E2, [2])
+asig2rspec!(S2, E2, plan)
+@test isapprox(S2, Sr2[1:end, 1:Nw], rtol=1e-6)
+
 
 # analytic spectrum -> real spectrum
-# S2 = copy(Sa2)
-# aspec2rspec!(S2)
-# @test isapprox(S2, Sr2, rtol=1e-6)
+S2 = copy(Sa2)
+aspec2rspec!(S2)
+@test isapprox(S2, Sr2, rtol=1e-6)
 
-# S2 = zeros(ComplexF64, (Nr, Nw))
-# aspec2rspec!(S2, Sa2)
-# @test isapprox(S2, Sr2[1:end, 1:Nw], rtol=1e-6)
+S2 = zeros(ComplexF64, (Nr, Nw))
+aspec2rspec!(S2, Sa2)
+@test isapprox(S2, Sr2[1:end, 1:Nw], rtol=1e-6)
+
 
 # analytic spectrum -> real signal
-# nothing
+S2 = copy(Sa2)
+plan = FFTW.plan_fft!(S2, [2])
+aspec2rsig!(S2, plan)
+@test isapprox(S2, Er2, rtol=1e-6)
 
 
 # ******************************************************************************
@@ -152,19 +194,26 @@ plan = FFTW.plan_fft!(E2gpu, [2])
 rsig2asig!(E2gpu, plan)
 @test isapprox(collect(E2gpu), Ea2, rtol=1e-6)
 
+
 # real signal -> analytic spectrum:
 E2gpu = copy(Er2gpu)
 plan = FFTW.plan_fft!(E2gpu, [2])
 rsig2aspec!(E2gpu, plan)
 @test isapprox(collect(E2gpu), Sa2, rtol=1e-6)
 
+
 # real spectrum -> analytic spectrum:
-S2gpu = copy(Sr2)
+S2gpu = copy(Sr2gpu)
 rspec2aspec!(S2gpu)
 @test isapprox(collect(S2gpu), Sa2, rtol=1e-6)
 
+
 # real spectrum -> analytic signal:
-# nothing
+S2gpu = copy(Sr2gpu)
+plan = FFTW.plan_fft!(S2gpu, [2])
+rspec2asig!(S2gpu, plan)
+@test isapprox(collect(S2gpu), Ea2, rtol=1e-6)
+
 
 # ------------------------------------------------------------------------------
 # analytic signal -> real signal
@@ -172,8 +221,19 @@ E2gpu = copy(Ea2gpu)
 asig2rsig!(E2gpu)
 @test isapprox(collect(E2gpu), Er2, rtol=1e-6)
 
+
 # analytic signal -> real spectrum
-# nothing
+# E2gpu = copy(Ea2gpu)
+# plan = FFTW.plan_fft!(E2gpu, [2])
+# asig2rspec!(E2gpu, plan)
+# @test isapprox(collect(E2gpu), Sr2, rtol=1e-6)
+
+S2gpu = CUDA.zeros(ComplexF64, (Nr, Nw))
+E2gpu = copy(Ea2gpu)
+plan = FFTW.plan_fft!(E2gpu, [2])
+asig2rspec!(S2gpu, E2gpu, plan)
+@test isapprox(collect(S2gpu), Sr2[1:end, 1:Nw], rtol=1e-6)
+
 
 # analytic spectrum -> real spectrum
 # S2 = CUDA.CuArray(Sa2)
@@ -183,6 +243,7 @@ asig2rsig!(E2gpu)
 S2gpu = CUDA.zeros(ComplexF64, (Nr, Nw))
 aspec2rspec!(S2gpu, Sa2gpu)
 @test isapprox(collect(S2gpu), Sr2[1:end, 1:Nw], rtol=1e-6)
+
 
 # analytic spectrum -> real signal
 # nothing

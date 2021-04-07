@@ -3,7 +3,8 @@ module AnalyticSignals
 import CUDA
 import FFTW
 
-export rspec2aspec!, aspec2rspec!, rsig2asig!, asig2rsig!, rsig2aspec!
+export rsig2asig!, rsig2aspec!, rspec2aspec!, rspec2asig!,
+       asig2rsig!, asig2rspec!, aspec2rspec!, aspec2rsig!
 
 
 macro krun(ex...)
@@ -131,6 +132,11 @@ end
 # ******************************************************************************
 # real spectrum -> analytic signal
 # ******************************************************************************
+function rspec2asig!(S::AbstractArray{<:Complex}, FT::FFTW.Plan)
+    rspec2aspec!(S)
+    FT * S   # frequency -> time [exp(-i*w*t)]
+    return nothing
+end
 
 
 # ******************************************************************************
@@ -145,6 +151,20 @@ end
 # ******************************************************************************
 # analytic signal -> real spectrum
 # ******************************************************************************
+function asig2rspec!(E::AbstractArray{<:Complex}, FT::FFTW.Plan)
+    FT \ E   # time -> frequency [exp(-i*w*t)]
+    aspec2rspec!(E)
+    return nothing
+end
+
+
+function asig2rspec!(
+    Sr::A, E::A, FT::FFTW.Plan,
+) where A<:AbstractArray{<:Complex}
+    FT \ E   # time -> frequency [exp(-i*w*t)]
+    aspec2rspec!(Sr, E)
+    return nothing
+end
 
 
 # ******************************************************************************
@@ -168,11 +188,29 @@ function aspec2rspec!(S::AbstractArray{<:Complex, 1})
 end
 
 
+function aspec2rspec!(S::AbstractArray{<:Complex, 2})
+    N1, N2 = size(S)
+    for i=1:N1
+        @views aspec2rspec!(S[i, :])
+    end
+    return nothing
+end
+
+
 function aspec2rspec!(Sr::A, Sa::A) where A<:AbstractArray{<:Complex, 1}
     N = length(Sr)
     Sr[1] = Sa[1]   # f = 0
     for i=2:N
         Sr[i] = Sa[i] / 2   # f > 0
+    end
+    return nothing
+end
+
+
+function aspec2rspec!(Sr::A, Sa::A) where A<:AbstractArray{<:Complex, 2}
+    N1, N2 = size(Sr)
+    for i=1:N1
+        @views aspec2rspec!(Sr[i, :], Sa[i, :])
     end
     return nothing
 end
@@ -207,6 +245,11 @@ end
 # ******************************************************************************
 # analytic spectrum -> real signal
 # ******************************************************************************
+function aspec2rsig!(S::AbstractArray{<:Complex}, FT::FFTW.Plan)
+    aspec2rspec!(S)
+    FT * S   # frequency -> time [exp(-i*w*t)]
+    return nothing
+end
 
 
 end
