@@ -86,6 +86,23 @@ function rspec2aspec!(S::CUDA.CuArray{<:Complex})
 end
 
 
+function _rspec2aspec_kernel!(S::CUDA.CuDeviceArray{<:Complex, 1})
+    id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
+    stride = CUDA.blockDim().x * CUDA.gridDim().x
+    Nt = length(S)
+    Nthalf = half(Nt)
+    for it=id:stride:Nt
+        if (it >= 2) & (it <= Nthalf)
+            S[it] = 2 * S[it]
+        end
+        if (it >= Nthalf + 1) & (it <= Nt)
+            S[it] = 0
+        end
+    end
+    return nothing
+end
+
+
 function _rspec2aspec_kernel!(S::CUDA.CuDeviceArray{<:Complex, 2})
     id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
     stride = CUDA.blockDim().x * CUDA.gridDim().x
@@ -218,6 +235,23 @@ end
 
 function aspec2rspec!(Sr::A, Sa::A) where A<:CUDA.CuArray{<:Complex}
     @krun length(Sr) _aspec2rspec_kernel!(Sr, Sa)
+    return nothing
+end
+
+
+function _aspec2rspec_kernel!(
+    Sr::A, Sa::A,
+) where A<:CUDA.CuDeviceArray{<:Complex, 1}
+    id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
+    stride = CUDA.blockDim().x * CUDA.gridDim().x
+    Nw = length(Sr)
+    for iw=id:stride:Nw
+        if iw == 1
+            Sr[iw] = Sa[iw]
+        else
+            Sr[iw] = Sa[iw] / 2
+        end
+    end
     return nothing
 end
 
