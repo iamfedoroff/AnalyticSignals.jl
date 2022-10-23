@@ -63,6 +63,10 @@ Sa2gpu = FFTW.ifft(Ea2gpu, [2])
 # ******************************************************************************
 # real signal -> analytic signal:
 E = copy(Er)
+rsig2asig!(E)
+@test isapprox(E, Ea, rtol=1e-6)
+
+E = copy(Er)
 plan = FFTW.plan_fft!(E)
 rsig2asig!(E, plan)
 @test isapprox(E, Ea, rtol=1e-6)
@@ -129,6 +133,10 @@ aspec2rsig!(S, plan)
 # 2D CPU
 # ******************************************************************************
 # real signal -> analytic signal:
+E2 = copy(Er2)
+rsig2asig!(E2)
+@test isapprox(E2, Ea2, rtol=1e-6)
+
 E2 = copy(Er2)
 plan = FFTW.plan_fft!(E2, [2])
 rsig2asig!(E2, plan)
@@ -197,6 +205,10 @@ aspec2rsig!(S2, plan)
 # ******************************************************************************
 # real signal -> analytic signal:
 Egpu = copy(Ergpu)
+rsig2asig!(Egpu)
+@test isapprox(Egpu, Eagpu, rtol=1e-6)
+
+Egpu = copy(Ergpu)
 plan = FFTW.plan_fft!(Egpu)
 rsig2asig!(Egpu, plan)
 @test isapprox(Egpu, Eagpu, rtol=1e-6)
@@ -261,6 +273,10 @@ aspec2rspec!(Sgpu, Sagpu)
 # 2D GPU
 # ******************************************************************************
 # real signal -> analytic signal:
+E2gpu = copy(Er2gpu)
+rsig2asig!(E2gpu)
+@test isapprox(E2gpu, Ea2gpu, rtol=1e-6)
+
 E2gpu = copy(Er2gpu)
 plan = FFTW.plan_fft!(E2gpu, [2])
 rsig2asig!(E2gpu, plan)

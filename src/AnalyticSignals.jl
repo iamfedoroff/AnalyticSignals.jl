@@ -32,6 +32,22 @@ half(N) = iseven(N) ? div(N, 2) : div(N + 1, 2)
 # ******************************************************************************
 # real signal -> analytic signal
 # ******************************************************************************
+function rsig2asig!(E::AbstractArray{<:Complex, 1})
+    FFTW.ifft!(E)   # time -> frequency [exp(-i*w*t)]
+    rspec2aspec!(E)
+    FFTW.fft!(E)   # frequency -> time [exp(-i*w*t)]
+    return nothing
+end
+
+
+function rsig2asig!(E::AbstractArray{<:Complex, 2})
+    FFTW.ifft!(E, [2])   # time -> frequency [exp(-i*w*t)]
+    rspec2aspec!(E)
+    FFTW.fft!(E, [2])   # frequency -> time [exp(-i*w*t)]
+    return nothing
+end
+
+
 function rsig2asig!(E::AbstractArray{<:Complex}, FT::FFTW.Plan)
     FT \ E   # time -> frequency [exp(-i*w*t)]
     rspec2aspec!(E)
