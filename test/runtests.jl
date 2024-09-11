@@ -20,6 +20,7 @@ Nt = 256
 t = range(-10 * tau01, 10 * tau01, length=Nt)
 Nw = length(FFTW.rfftfreq(Nt))
 
+# 1D ---------------------------------------------------------------------------
 Er = @. Adc +
      A01 * exp(-0.5 * t^2 / tau01^2) * cos(w01 * t) +
      A02 * exp(-0.5 * t^2 / tau02^2) * cos(w02 * t + phi) + 0im
@@ -31,7 +32,13 @@ Ea = @. Adc +
 Sr = FFTW.ifft(Er)
 Sa = FFTW.ifft(Ea)
 
+Ergpu = CUDA.CuArray(Er)
+Eagpu = CUDA.CuArray(Ea)
 
+Srgpu = FFTW.ifft(Ergpu)
+Sagpu = FFTW.ifft(Eagpu)
+
+# 2D ---------------------------------------------------------------------------
 Nr = 512
 Er2 = zeros(ComplexF64, (Nr, Nt))
 Ea2 = zeros(ComplexF64, (Nr, Nt))
@@ -43,19 +50,29 @@ end
 Sr2 = FFTW.ifft(Er2, [2])
 Sa2 = FFTW.ifft(Ea2, [2])
 
-
-Ergpu = CUDA.CuArray(Er)
-Eagpu = CUDA.CuArray(Ea)
-
-Srgpu = FFTW.ifft(Ergpu)
-Sagpu = FFTW.ifft(Eagpu)
-
-
 Er2gpu = CUDA.CuArray(Er2)
 Ea2gpu = CUDA.CuArray(Ea2)
 
 Sr2gpu = FFTW.ifft(Er2gpu, [2])
 Sa2gpu = FFTW.ifft(Ea2gpu, [2])
+
+# 3D ---------------------------------------------------------------------------
+Nx, Ny = 128, 128
+Er3 = zeros(ComplexF64, (Nx, Ny, Nt))
+Ea3 = zeros(ComplexF64, (Nx, Ny, Nt))
+for iy=1:Ny, ix=1:Nx
+    @. Er3[ix, iy, :] = Er
+    @. Ea3[ix, iy, :] = Ea
+end
+
+Sr3 = FFTW.ifft(Er3, [3])
+Sa3 = FFTW.ifft(Ea3, [3])
+
+Er3gpu = CUDA.CuArray(Er3)
+Ea3gpu = CUDA.CuArray(Ea3)
+
+Sr3gpu = FFTW.ifft(Er3gpu, [3])
+Sa3gpu = FFTW.ifft(Ea3gpu, [3])
 
 
 # ******************************************************************************
@@ -201,6 +218,77 @@ aspec2rsig!(S2, plan)
 
 
 # ******************************************************************************
+# 3D CPU
+# ******************************************************************************
+# real signal -> analytic signal:
+E3 = copy(Er3)
+rsig2asig!(E3)
+@test isapprox(E3, Ea3, rtol=1e-6)
+
+E3 = copy(Er3)
+plan = FFTW.plan_fft!(E3, [3])
+rsig2asig!(E3, plan)
+@test isapprox(E3, Ea3, rtol=1e-6)
+
+
+# real signal -> analytic spectrum:
+E3 = copy(Er3)
+plan = FFTW.plan_fft!(E3, [3])
+rsig2aspec!(E3, plan)
+@test isapprox(E3, Sa3, rtol=1e-6)
+
+
+# real spectrum -> analytic spectrum:
+S3 = copy(Sr3)
+rspec2aspec!(S3)
+@test isapprox(S3, Sa3, rtol=1e-6)
+
+
+# real spectrum -> analytic signal:
+S3 = copy(Sr3)
+plan = FFTW.plan_fft!(S3, [3])
+rspec2asig!(S3, plan)
+@test isapprox(S3, Ea3, rtol=1e-6)
+
+
+# ------------------------------------------------------------------------------
+# analytic signal -> real signal
+E3 = copy(Ea3)
+asig2rsig!(E3)
+@test isapprox(E3, Er3, rtol=1e-6)
+
+
+# analytic signal -> real spectrum
+E3 = copy(Ea3)
+plan = FFTW.plan_fft!(E3, [3])
+asig2rspec!(E3, plan)
+@test isapprox(E3, Sr3, rtol=1e-6)
+
+S3 = zeros(ComplexF64, (Nx, Ny, Nw))
+E3 = copy(Ea3)
+plan = FFTW.plan_fft!(E3, [3])
+asig2rspec!(S3, E3, plan)
+@test isapprox(S3, Sr3[1:end, 1:end, 1:Nw], rtol=1e-6)
+
+
+# analytic spectrum -> real spectrum
+S3 = copy(Sa3)
+aspec2rspec!(S3)
+@test isapprox(S3, Sr3, rtol=1e-6)
+
+S3 = zeros(ComplexF64, (Nx, Ny, Nw))
+aspec2rspec!(S3, Sa3)
+@test isapprox(S3, Sr3[1:end, 1:end, 1:Nw], rtol=1e-6)
+
+
+# analytic spectrum -> real signal
+S3 = copy(Sa3)
+plan = FFTW.plan_fft!(S3, [3])
+aspec2rsig!(S3, plan)
+@test isapprox(S3, Er3, rtol=1e-6)
+
+
+# ******************************************************************************
 # 1D GPU
 # ******************************************************************************
 # real signal -> analytic signal:
@@ -331,6 +419,74 @@ asig2rspec!(S2gpu, E2gpu, plan)
 S2gpu = CUDA.zeros(ComplexF64, (Nr, Nw))
 aspec2rspec!(S2gpu, Sa2gpu)
 @test isapprox(collect(S2gpu), Sr2[1:end, 1:Nw], rtol=1e-6)
+
+
+# analytic spectrum -> real signal
+# nothing
+
+
+# ******************************************************************************
+# 3D GPU
+# ******************************************************************************
+# real signal -> analytic signal:
+E3gpu = copy(Er3gpu)
+rsig2asig!(E3gpu)
+@test isapprox(E3gpu, Ea3gpu, rtol=1e-6)
+
+E3gpu = copy(Er3gpu)
+plan = FFTW.plan_fft!(E3gpu, [3])
+rsig2asig!(E3gpu, plan)
+@test isapprox(E3gpu, Ea3gpu, rtol=1e-6)
+
+
+# real signal -> analytic spectrum:
+E3gpu = copy(Er3gpu)
+plan = FFTW.plan_fft!(E3gpu, [3])
+rsig2aspec!(E3gpu, plan)
+@test isapprox(E3gpu, Sa3gpu, rtol=1e-6)
+
+
+# real spectrum -> analytic spectrum:
+S3gpu = copy(Sr3gpu)
+rspec2aspec!(S3gpu)
+@test isapprox(S3gpu, Sa3gpu, rtol=1e-6)
+
+
+# real spectrum -> analytic signal:
+S3gpu = copy(Sr3gpu)
+plan = FFTW.plan_fft!(S3gpu, [3])
+rspec2asig!(S3gpu, plan)
+@test isapprox(S3gpu, Ea3gpu, rtol=1e-6)
+
+
+# ------------------------------------------------------------------------------
+# analytic signal -> real signal
+E3gpu = copy(Ea3gpu)
+asig2rsig!(E3gpu)
+@test isapprox(E3gpu, Er3gpu, rtol=1e-6)
+
+
+# analytic signal -> real spectrum
+# E3gpu = copy(Ea3gpu)
+# plan = FFTW.plan_fft!(E3gpu, [3])
+# asig2rspec!(E3gpu, plan)
+# @test isapprox(E3gpu, Sr3gpu, rtol=1e-6)
+
+S3gpu = CUDA.zeros(ComplexF64, (Nx, Ny, Nw))
+E3gpu = copy(Ea3gpu)
+plan = FFTW.plan_fft!(E3gpu, [3])
+asig2rspec!(S3gpu, E3gpu, plan)
+@test isapprox(collect(S3gpu), Sr3[1:end, 1:end, 1:Nw], rtol=1e-6)
+
+
+# analytic spectrum -> real spectrum
+# S3 = CUDA.CuArray(Sa3)
+# aspec2rspec!(S3)
+# @test isapprox(collect(S3), Sr3, rtol=1e-6)
+
+S3gpu = CUDA.zeros(ComplexF64, (Nx, Ny, Nw))
+aspec2rspec!(S3gpu, Sa3gpu)
+@test isapprox(collect(S3gpu), Sr3[1:end, 1:end, 1:Nw], rtol=1e-6)
 
 
 # analytic spectrum -> real signal

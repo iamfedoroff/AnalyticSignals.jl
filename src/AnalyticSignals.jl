@@ -48,6 +48,14 @@ function rsig2asig!(E::AbstractArray{<:Complex, 2})
 end
 
 
+function rsig2asig!(E::AbstractArray{<:Complex, 3})
+    FFTW.ifft!(E, [3])   # time -> frequency [exp(-i*w*t)]
+    rspec2aspec!(E)
+    FFTW.fft!(E, [3])   # frequency -> time [exp(-i*w*t)]
+    return nothing
+end
+
+
 function rsig2asig!(E::AbstractArray{<:Complex}, FT::FFTW.Plan)
     FT \ E   # time -> frequency [exp(-i*w*t)]
     rspec2aspec!(E)
@@ -91,6 +99,15 @@ function rspec2aspec!(S::AbstractArray{<:Complex, 2})
     N1, N2 = size(S)
     for i=1:N1
         @views rspec2aspec!(S[i, :])
+    end
+    return nothing
+end
+
+
+function rspec2aspec!(S::AbstractArray{<:Complex, 3})
+    N1, N2, N3 = size(S)
+    for j=1:N2, i=1:N1
+        @views rspec2aspec!(S[i, j, :])
     end
     return nothing
 end
@@ -230,6 +247,15 @@ function aspec2rspec!(S::AbstractArray{<:Complex, 2})
 end
 
 
+function aspec2rspec!(S::AbstractArray{<:Complex, 3})
+    N1, N2, N3 = size(S)
+    for j=1:N2, i=1:N1
+        @views aspec2rspec!(S[i, j, :])
+    end
+    return nothing
+end
+
+
 function aspec2rspec!(Sr::A, Sa::A) where A<:AbstractArray{<:Complex, 1}
     N = length(Sr)
     Sr[1] = Sa[1]   # f = 0
@@ -244,6 +270,15 @@ function aspec2rspec!(Sr::A, Sa::A) where A<:AbstractArray{<:Complex, 2}
     N1, N2 = size(Sr)
     for i=1:N1
         @views aspec2rspec!(Sr[i, :], Sa[i, :])
+    end
+    return nothing
+end
+
+
+function aspec2rspec!(Sr::A, Sa::A) where A<:AbstractArray{<:Complex, 3}
+    N1, N2, N3 = size(Sr)
+    for j=1:N2, i=1:N1
+        @views aspec2rspec!(Sr[i, j, :], Sa[i, j, :])
     end
     return nothing
 end
@@ -286,6 +321,27 @@ function _aspec2rspec_kernel!(
             Sr[i, j] = Sa[i, j]
         else
             Sr[i, j] = Sa[i, j] / 2
+        end
+    end
+    return nothing
+end
+
+
+function _aspec2rspec_kernel!(
+    Sr::A, Sa::A,
+) where A<:CUDA.CuDeviceArray{<:Complex, 3}
+    id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
+    stride = CUDA.blockDim().x * CUDA.gridDim().x
+    Nx, Ny, Nw = size(Sr)
+    cartesian = CartesianIndices((Nx, Ny, Nw))
+    for k=id:stride:Nx*Ny*Nw
+        ix = cartesian[k][1]
+        iy = cartesian[k][2]
+        iw = cartesian[k][3]
+        if iw == 1
+            Sr[ix, iy, iw] = Sa[ix, iy, iw]
+        else
+            Sr[ix, iy, iw] = Sa[ix, iy, iw] / 2
         end
     end
     return nothing
