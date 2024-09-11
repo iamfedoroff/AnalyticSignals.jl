@@ -284,6 +284,84 @@ function aspec2rspec!(Sr::A, Sa::A) where A<:AbstractArray{<:Complex, 3}
 end
 
 
+function aspec2rspec!(S::A) where A<:CUDA.CuArray{<:Complex}
+    @krun length(S) _aspec2rspec_kernel!(S)
+    return nothing
+end
+
+
+function _aspec2rspec_kernel!(S::A) where A<:CUDA.CuDeviceArray{<:Complex, 1}
+    id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
+    stride = CUDA.blockDim().x * CUDA.gridDim().x
+    Nw = length(S)
+    Nwhalf = half(Nw)
+    # S[1] = S[1]   # f = 0
+    for iw=id:stride:Nw
+        if iw >= 2 && iw <= Nwhalf
+            S[iw] = S[iw] / 2   # f > 0
+        end
+    end
+    for iw=id:stride:Nw
+        if iw >= Nwhalf+1 && iw <= Nw
+            S[iw] = conj(S[Nw - iw + 2])   # f < 0
+        end
+    end
+    return nothing
+end
+
+
+function _aspec2rspec_kernel!(S::A) where A<:CUDA.CuDeviceArray{<:Complex, 2}
+    id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
+    stride = CUDA.blockDim().x * CUDA.gridDim().x
+    Nr, Nw = size(S)
+    Nwhalf = half(Nw)
+    cartesian = CartesianIndices((Nr, Nw))
+    # S[:,1] = S[:,1]   # f = 0
+    for k=id:stride:Nr*Nw
+        ir = cartesian[k][1]
+        iw = cartesian[k][2]
+        if iw >= 2 && iw <= Nwhalf
+            S[ir, iw] = S[ir, iw] / 2   # f > 0
+        end
+    end
+    for k=id:stride:Nr*Nw
+        ir = cartesian[k][1]
+        iw = cartesian[k][2]
+        if iw >= Nwhalf+1 && iw <= Nw
+            S[ir, iw] = conj(S[ir, Nw - iw + 2])   # f < 0
+        end
+    end
+    return nothing
+end
+
+
+function _aspec2rspec_kernel!(S::A) where A<:CUDA.CuDeviceArray{<:Complex, 3}
+    id = (CUDA.blockIdx().x - 1) * CUDA.blockDim().x + CUDA.threadIdx().x
+    stride = CUDA.blockDim().x * CUDA.gridDim().x
+    Nx, Ny, Nw = size(S)
+    Nwhalf = half(Nw)
+    cartesian = CartesianIndices((Nx, Ny, Nw))
+    # S[:,:,1] = S[:,:,1]   # f = 0
+    for k=id:stride:Nx*Ny*Nw
+        ix = cartesian[k][1]
+        iy = cartesian[k][2]
+        iw = cartesian[k][3]
+        if iw >= 2 && iw <= Nwhalf
+            S[ix, iy, iw] = S[ix, iy, iw] / 2   # f > 0
+        end
+    end
+    for k=id:stride:Nx*Ny*Nw
+        ix = cartesian[k][1]
+        iy = cartesian[k][2]
+        iw = cartesian[k][3]
+        if iw >= Nwhalf+1 && iw <= Nw
+            S[ix, iy, iw] = conj(S[ix, iy, Nw - iw + 2])   # f < 0
+        end
+    end
+    return nothing
+end
+
+
 function aspec2rspec!(Sr::A, Sa::A) where A<:CUDA.CuArray{<:Complex}
     @krun length(Sr) _aspec2rspec_kernel!(Sr, Sa)
     return nothing

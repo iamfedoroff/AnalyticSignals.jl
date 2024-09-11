@@ -341,9 +341,9 @@ asig2rspec!(Sgpu, Egpu, plan)
 
 
 # analytic spectrum -> real spectrum
-# Sgpu = copy(Sagpu)
-# aspec2rspec!(Sgpu)
-# @test isapprox(Sgpu, Srgpu, rtol=1e-6)
+Sgpu = copy(Sagpu)
+aspec2rspec!(Sgpu)
+@test isapprox(Sgpu, Srgpu, rtol=1e-6)
 
 Sgpu = CUDA.zeros(ComplexF64, Nw)
 aspec2rspec!(Sgpu, Sagpu)
@@ -412,9 +412,9 @@ asig2rspec!(S2gpu, E2gpu, plan)
 
 
 # analytic spectrum -> real spectrum
-# S2 = CUDA.CuArray(Sa2)
-# aspec2rspec!(S2)
-# @test isapprox(collect(S2), Sr2, rtol=1e-6)
+S2 = CUDA.CuArray(Sa2)
+aspec2rspec!(S2)
+@test isapprox(collect(S2), Sr2, rtol=1e-6)
 
 S2gpu = CUDA.zeros(ComplexF64, (Nr, Nw))
 aspec2rspec!(S2gpu, Sa2gpu)
@@ -480,9 +480,9 @@ asig2rspec!(S3gpu, E3gpu, plan)
 
 
 # analytic spectrum -> real spectrum
-# S3 = CUDA.CuArray(Sa3)
-# aspec2rspec!(S3)
-# @test isapprox(collect(S3), Sr3, rtol=1e-6)
+S3 = CUDA.CuArray(Sa3)
+aspec2rspec!(S3)
+@test isapprox(collect(S3), Sr3, rtol=1e-6)
 
 S3gpu = CUDA.zeros(ComplexF64, (Nx, Ny, Nw))
 aspec2rspec!(S3gpu, Sa3gpu)
